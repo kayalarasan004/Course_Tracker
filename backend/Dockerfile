@@ -1,27 +1,14 @@
-# Use a base image with Java 17
-FROM eclipse-temurin:17-jdk-alpine
-
-# Set working directory
+# Build Stage
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
-
-# Copy maven wrapper and pom.xml
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-
-# Give execution rights to the wrapper
-RUN chmod +x mvnw
-
-# Download dependencies (this step isolates dependency downloading for caching)
-RUN ./mvnw dependency:go-offline
-
-# Copy the source code
+COPY pom.xml .
+RUN mvn dependency:go-offline
 COPY src ./src
+RUN mvn package -DskipTests
 
-# Build the application
-RUN ./mvnw package -DskipTests
-
-# Expose port 8080
+# Run Stage
+FROM eclipse-temurin:17-jdk-alpine
+WORKDIR /app
+COPY --from=build /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
-
-# Run the jar file (the version 0.0.1-SNAPSHOT comes from pom.xml)
-CMD ["java", "-jar", "target/backend-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "app.jar"]
